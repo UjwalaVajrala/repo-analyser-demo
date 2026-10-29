@@ -2,47 +2,476 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Hub</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #eef2ff;
-            text-align: center;
-            padding: 50px;
-        }
-        .card {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            max-width: 500px;
-            margin: auto;
-            box-shadow: 0 5px 20px #ccd;
-        }
-        button {
-            background: #4f46e5;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RepoPilot AI | GitHub Repository Analyser</title>
+<style>
+:root {
+  --bg:#0b1020; --panel:#121a2d; --border:#26334d;
+  --text:#edf2ff; --muted:#91a0bd; --accent:#818cf8;
+  --green:#34d399; --red:#fb7185; --yellow:#fbbf24;
+}
+* {box-sizing:border-box}
+body {
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:Inter,Segoe UI,Arial,sans-serif; font-size:14px;
+}
+button,input,textarea {font:inherit}
+button {cursor:pointer}
+.layout {display:flex;min-height:100vh}
+.sidebar {
+  width:235px;padding:26px 17px;background:#0e1527;
+  border-right:1px solid var(--border);flex-shrink:0;
+}
+.brand {font-size:21px;font-weight:800;margin-bottom:38px}
+.brand span {color:var(--accent)}
+.nav {padding:12px 14px;color:var(--muted);border-radius:9px;margin:5px 0}
+.nav.active {background:#252d49;color:white}
+.sidebar-note {
+  margin-top:40px;padding:14px;border:1px solid var(--border);
+  border-radius:12px;color:var(--muted);line-height:1.7;
+}
+main {flex:1;min-width:0;padding:28px;max-width:1500px;margin:auto;width:100%}
+.top {display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:28px}
+h1 {font-size:27px;margin:0 0 8px}
+h2 {font-size:16px;margin:0 0 16px}
+p {color:var(--muted);line-height:1.6}
+.status {color:var(--green);font-size:12px}
+.panel {
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:15px;padding:22px;margin-bottom:20px;
+}
+.repo-form {display:flex;gap:10px;margin-top:17px}
+input,textarea {
+  background:#0b1222;color:var(--text);border:1px solid var(--border);
+  border-radius:9px;padding:13px;outline:none;width:100%;
+}
+input:focus,textarea:focus {border-color:var(--accent)}
+.btn {
+  background:#6366f1;color:white;border:0;border-radius:9px;
+  padding:12px 18px;font-weight:700;white-space:nowrap;
+}
+.btn.secondary {background:#27334c;color:var(--text)}
+.btn:disabled {opacity:.5;cursor:wait}
+.metrics {display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.metric {background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:19px}
+.metric .label {color:var(--muted);font-size:12px}
+.metric .number {font-size:27px;font-weight:800;margin:10px 0}
+.grid {display:grid;grid-template-columns:minmax(0,1.1fr) minmax(300px,.9fr);gap:20px}
+.file-list {max-height:350px;overflow:auto}
+.file {
+  padding:10px 8px;border-bottom:1px solid var(--border);
+  overflow-wrap:anywhere;color:#c7d2fe;font-size:12px;
+}
+.file button {
+  background:none;border:0;color:inherit;text-align:left;cursor:pointer;
+}
+.issue {
+  border:1px solid var(--border);border-radius:10px;
+  padding:13px;margin:10px 0;
+}
+.issue strong {display:block;margin-bottom:7px}
+.issue small {color:var(--muted);line-height:1.6}
+.tag {font-size:10px;padding:4px 7px;border-radius:5px;margin-right:6px}
+.high {background:#512332;color:#fda4af}
+.medium {background:#4a3b19;color:#fde68a}
+.low {background:#163e34;color:#6ee7b7}
+#output,#chatLog {
+  background:#0b1222;border:1px solid var(--border);border-radius:10px;
+  padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;
+  line-height:1.65;max-height:400px;overflow:auto;
+}
+#output:empty:before {content:"Select a file to view its source code.";color:var(--muted)}
+#chatLog {min-height:130px;max-height:300px;margin-bottom:12px}
+.chat-message {margin-bottom:13px}
+.chat-message b {color:var(--accent)}
+.chat-form {display:flex;gap:9px}
+.footer {color:var(--muted);font-size:12px;text-align:center;padding:15px}
+.hidden {display:none}
+@media(max-width:850px) {
+  .sidebar {display:none}
+  main {padding:15px}
+  .metrics {grid-template-columns:repeat(2,1fr)}
+  .grid {grid-template-columns:1fr}
+  .repo-form {flex-direction:column}
+  .top {align-items:flex-start}
+}
+</style>
 </head>
 <body>
-    <div class="card">
-        <h1>Welcome to Student Hub</h1>
-        <p>Manage your learning journey in one place.</p>
-        <button onclick="showMessage()">Get Started</button>
-        <p id="message"></p>
-    </div>
+<div class="layout">
+<aside class="sidebar">
+  <div class="brand">⌘ Repo<span>Pilot</span></div>
+  <div class="nav active">▦ &nbsp; Overview</div>
+  <div class="nav">⌘ &nbsp; Repository Explorer</div>
+  <div class="nav">◈ &nbsp; Code Quality</div>
+  <div class="nav">✧ &nbsp; AI Assistant</div>
+  <div class="sidebar-note">
+    <strong>Repository Intelligence</strong><br>
+    Analyse source files, identify common risks, and explore your codebase.
+  </div>
+</aside>
 
-    <script>
-        function showMessage() {
-            document.getElementById("message").textContent =
-                "Welcome! Your learning journey starts here.";
+<main>
+  <div class="top">
+    <div>
+      <h1>GitHub Repository Analyser</h1>
+      <p>Understand your codebase. Discover issues. Build better software.</p>
+    </div>
+    <div class="status">● System ready</div>
+  </div>
+
+  <section class="panel">
+    <h2>Connect a GitHub repository</h2>
+    <p>Enter a public GitHub repository URL or owner/repository.</p>
+    <form class="repo-form" id="repoForm">
+      <input id="repoUrl" required
+        placeholder="https://github.com/owner/repository"
+        value="https://github.com/UjwalaVajrala/repo-analyser-demo">
+      <button class="btn" id="analyseBtn">Analyse Repository ↗</button>
+    </form>
+    <p id="statusText" role="status">Ready to connect to GitHub.</p>
+  </section>
+
+  <div class="metrics">
+    <div class="metric"><div class="label">Repository Files</div><div class="number" id="fileCount">—</div><div class="label">Files discovered</div></div>
+    <div class="metric"><div class="label">Source Files Read</div><div class="number" id="readCount">—</div><div class="label">Within analysis limit</div></div>
+    <div class="metric"><div class="label">Potential Issues</div><div class="number" id="issueCount">—</div><div class="label">Heuristic findings</div></div>
+    <div class="metric"><div class="label">Repository</div><div class="number" style="font-size:17px" id="repoName">Not connected</div><div class="label" id="repoBranch">Waiting for repository</div></div>
+  </div>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>Repository Explorer</h2>
+      <p id="repoDescription">Connect a repository to see its files.</p>
+      <div class="file-list" id="fileList"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Code Quality & Security</h2>
+      <p>Automated checks for common code patterns. Findings require manual verification.</p>
+      <div id="issues">
+        <p>Run an analysis to identify potential issues.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Source Code Viewer</h2>
+    <p id="selectedFile">No file selected</p>
+    <pre id="output"></pre>
+    <button class="btn secondary" id="copyBtn">Copy source code</button>
+  </section>
+
+  <section class="panel">
+    <h2>✧ Repository Assistant</h2>
+    <p>Ask questions about files retrieved during the analysis. Answers are based on code search, not an external LLM.</p>
+    <div id="chatLog" aria-live="polite">Assistant: Connect a repository and ask a question about its code.</div>
+    <form id="chatForm" class="chat-form">
+      <input id="question" placeholder="e.g. Explain the main function or find API calls..." required>
+      <button class="btn">Ask</button>
+    </form>
+    <p>Tip: Try “Find security risks”, “Explain the HTML page”, or “Suggest a contact form”.</p>
+  </section>
+
+  <div class="footer">RepoPilot AI · GitHub API · Browser-based analysis · Demo project</div>
+</main>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+let repoFiles = [];
+let sourceFiles = [];
+let currentSource = "";
+let currentPath = "";
+
+const ignored = /(^|\/)(node_modules|vendor|dist|build|\.git|coverage)\//i;
+const sourceExt = /\.(html?|css|js|jsx|ts|tsx|py|java|c|cpp|cs|php|go|rs|json|yml|yaml|md|sql|sh)$/i;
+
+function setStatus(message) {
+  $("statusText").textContent = message;
+}
+
+function parseRepo(input) {
+  const cleaned = input.trim().replace(/\/+$/, "");
+  const match = cleaned.match(
+    /(?:https?:\/\/github\.com\/)?([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)(?:\.git)?(?:\/.*)?$/
+  );
+  if (!match) throw new Error("Enter a valid GitHub repository URL or owner/repository.");
+  return {owner: match[1], name: match[2].replace(/\.git$/, "")};
+}
+
+async function githubApi(url) {
+  const response = await fetch(url, {
+    headers: {"Accept": "application/vnd.github+json"}
+  });
+  if (!response.ok) {
+    if (response.status === 404) throw new Error("Repository or branch not found, or repository is inaccessible.");
+    if (response.status === 403) throw new Error("GitHub API rate limit reached. Wait a while and try again.");
+    throw new Error("GitHub request failed: HTTP " + response.status);
+  }
+  return response.json();
+}
+
+$("repoForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  $("analyseBtn").disabled = true;
+  $("issues").innerHTML = "";
+  $("fileList").innerHTML = "";
+  $("output").textContent = "";
+  $("chatLog").textContent = "Assistant: Repository analysis started.";
+  repoFiles = [];
+  sourceFiles = [];
+  currentSource = "";
+
+  try {
+    const repo = parseRepo($("repoUrl").value);
+    setStatus("Connecting to GitHub...");
+    const base = `https://api.github.com/repos/${repo.owner}/${repo.name}`;
+    const metadata = await githubApi(base);
+
+    const branch = metadata.default_branch;
+    $("repoName").textContent = metadata.full_name;
+    $("repoBranch").textContent = "Default branch: " + branch;
+    $("repoDescription").textContent =
+      metadata.description || "No repository description provided.";
+    
+    setStatus("Reading repository file tree...");
+    const treeData = await githubApi(
+      `${base}/git/trees/${encodeURIComponent(branch)}?recursive=1`
+    );
+
+    repoFiles = (treeData.tree || [])
+      .filter(item => item.type === "blob" && !ignored.test(item.path))
+      .sort((a,b) => a.path.localeCompare(b.path));
+
+    $("fileCount").textContent = repoFiles.length;
+    const candidates = repoFiles.filter(f => sourceExt.test(f.path) && f.size <= 80000);
+    const selected = candidates.slice(0, 20);
+
+    setStatus(`Reading up to ${selected.length} source files...`);
+    for (const file of selected) {
+      try {
+        const response = await fetch(
+          `https://raw.githubusercontent.com/${repo.owner}/${repo.name}/${encodeURIComponent(branch)}/${file.path}`
+        );
+        if (!response.ok) continue;
+        const text = await response.text();
+        if (text.length < 100000) {
+          sourceFiles.push({path:file.path, content:text});
         }
-    </script>
+      } catch (error) {
+        // A failed individual file does not stop the remaining analysis.
+      }
+    }
+
+    $("readCount").textContent = sourceFiles.length;
+    renderFiles();
+    analyseCode();
+    setStatus(`Analysis complete for ${metadata.full_name}.`);
+  } catch (error) {
+    setStatus("Error: " + error.message);
+  } finally {
+    $("analyseBtn").disabled = false;
+  }
+});
+
+function renderFiles() {
+  const list = $("fileList");
+  list.innerHTML = "";
+  if (!repoFiles.length) {
+    list.textContent = "No repository files found.";
+    return;
+  }
+
+  repoFiles.slice(0,300).forEach(file => {
+    const row = document.createElement("div");
+    row.className = "file";
+    const button = document.createElement("button");
+    button.textContent = "▤  " + file.path;
+    button.addEventListener("click", () => showFile(file.path));
+    row.appendChild(button);
+    list.appendChild(row);
+  });
+
+  if (repoFiles.length > 300) {
+    const note = document.createElement("p");
+    note.textContent = "Showing first 300 of " + repoFiles.length + " files.";
+    list.appendChild(note);
+  }
+}
+
+function showFile(path) {
+  const file = sourceFiles.find(f => f.path === path);
+  $("selectedFile").textContent = path;
+  $("output").textContent = file
+    ? file.content
+    : "This file was discovered but not retrieved. It may be too large or outside the source-file limit.";
+  currentSource = file ? file.content : "";
+  currentPath = path;
+}
+
+$("copyBtn").addEventListener("click", async () => {
+  if (!currentSource) return setStatus("Select a retrieved source file first.");
+  try {
+    await navigator.clipboard.writeText(currentSource);
+    setStatus("Source code copied.");
+  } catch {
+    setStatus("Clipboard access unavailable in this browser.");
+  }
+});
+
+function analyseCode() {
+  const findings = [];
+  const add = (severity, title, file, explanation) =>
+    findings.push({severity,title,file,explanation});
+
+  for (const file of sourceFiles) {
+    const c = file.content;
+    const path = file.path;
+    const isHtml = /\.html?$/i.test(path);
+    const isJs = /\.(js|jsx|ts|tsx|html?)$/i.test(path);
+
+    if (/eval\s*\(/.test(c))
+      add("High","Dynamic eval() usage",path,
+          "eval() can execute arbitrary strings as code. Verify whether the input is trusted and prefer safer alternatives.");
+
+    if (/innerHTML\s*=/.test(c))
+      add("Medium","Potential unsafe HTML insertion",path,
+          "Review innerHTML assignments. Untrusted content can introduce cross-site scripting risks.");
+
+    if (/(password|api[_-]?key|secret|access[_-]?token)\s*[:=]\s*["'][^"']{8,}["']/i.test(c))
+      add("High","Possible hardcoded credential",path,
+          "A credential-like value appears in source. Verify it is not a real secret; use environment variables or a secret manager.");
+
+    if (isHtml && !/name=["']viewport["']/i.test(c))
+      add("Low","Missing viewport declaration",path,
+          "Consider a responsive viewport meta tag for mobile devices.");
+
+    if (isJs && /console\.log\s*\(/.test(c))
+      add("Low","Console logging found",path,
+          "Review debug logs before production, especially if they might expose sensitive data.");
+
+    if (isJs && /fetch\s*\(/.test(c) && !/catch\s*\(/.test(c) && !/try\s*\{/.test(c))
+      add("Medium","Review network error handling",path,
+          "Network requests appear without an obvious try/catch or catch handler. Verify failures are handled correctly.");
+
+    if (/TODO|FIXME|XXX/.test(c))
+      add("Low","Unfinished-work marker",path,
+          "Review TODO, FIXME, or XXX comments to check whether work remains incomplete.");
+  }
+
+  $("issueCount").textContent = findings.length;
+  const container = $("issues");
+  container.innerHTML = "";
+
+  if (!findings.length) {
+    container.textContent = "No issues matched the available checks. This does not guarantee the code is bug-free or secure.";
+    return;
+  }
+
+  findings.forEach(item => {
+    const card = document.createElement("div");
+    card.className = "issue";
+    const tag = document.createElement("span");
+    tag.className = "tag " + (item.severity === "High" ? "high" : item.severity === "Medium" ? "medium" : "low");
+    tag.textContent = item.severity;
+    const title = document.createElement("strong");
+    title.append(tag, document.createTextNode(item.title));
+    const detail = document.createElement("small");
+    detail.textContent = item.file + "\n" + item.explanation;
+    detail.style.whiteSpace = "pre-wrap";
+    card.append(title, detail);
+    container.appendChild(card);
+  });
+}
+
+function answerQuestion(question) {
+  const q = question.toLowerCase();
+  const found = [];
+
+  const terms = q.split(/[^a-z0-9_]+/).filter(t => t.length > 2);
+  const scored = sourceFiles.map(file => {
+    const lower = file.content.toLowerCase();
+    const path = file.path.toLowerCase();
+    const score = terms.reduce((n,t) => n + (lower.includes(t) ? 1 : 0) + (path.includes(t) ? 3 : 0), 0);
+    return {...file, score};
+  }).filter(f => f.score > 0).sort((a,b) => b.score-a.score);
+
+  if (/security|vulnerabilit|risk|bug|issue/.test(q)) {
+    const issueCards = [...$("issues").querySelectorAll(".issue")];
+    if (issueCards.length) {
+      return "Potential findings from the automated checks:\n\n" +
+        issueCards.map(el => el.innerText).join("\n\n") +
+        "\n\nThese are heuristic warnings and require manual review.";
+    }
+  }
+
+  if (/suggest|implement|add |create |new feature|contact form/.test(q)) {
+    return "Feature implementation plan:\n" +
+      "1. Identify the relevant HTML, CSS, and JavaScript files.\n" +
+      "2. Define the expected behaviour and input validation.\n" +
+      "3. Implement the feature in the appropriate files.\n" +
+      "4. Test normal inputs, invalid inputs, and error cases.\n\n" +
+      "I cannot safely modify your GitHub repository or generate a fully integrated patch from this local rule-based assistant. Ask about a specific file for more context.";
+  }
+
+  if (/structure|files|repository|repo overview/.test(q)) {
+    return "Repository overview:\n" +
+      $("repoDescription").textContent + "\n" +
+      "Total files discovered: " + repoFiles.length + "\n" +
+      "Source files retrieved: " + sourceFiles.length + "\n\n" +
+      "Retrieved files:\n" + sourceFiles.map(f => f.path).join("\n");
+  }
+
+  if (/explain|main function|purpose|what does/.test(q) && !scored.length && sourceFiles.length) {
+    const file = sourceFiles[0];
+    return "File: " + file.path + "\n\n" +
+      "This file contains " + file.content.split("\n").length +
+      " lines. Here is its beginning:\n\n" +
+      file.content.slice(0,2500) +
+      "\n\nAsk a more specific question to search the retrieved source code.";
+  }
+
+  for (const file of scored.slice(0,3)) {
+    found.push("File: " + file.path + "\n" +
+      file.content.slice(0,1800));
+  }
+
+  if (found.length) {
+    return "Relevant code found by keyword search:\n\n" + found.join("\n\n---\n\n") +
+      "\n\nThis is retrieved source code, not a verified AI-generated explanation.";
+  }
+
+  return "I could not find a clear answer in the retrieved source files. Try naming a file, function, or keyword. Only a limited set of public repository files was read.";
+}
+
+$("chatForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const question = $("question").value.trim();
+  if (!question) return;
+
+  const log = $("chatLog");
+  const user = document.createElement("div");
+  user.className = "chat-message";
+  const label = document.createElement("b");
+  label.textContent = "You: ";
+  user.append(label, document.createTextNode(question));
+  log.appendChild(user);
+
+  const reply = document.createElement("div");
+  reply.className = "chat-message";
+  const heading = document.createElement("b");
+  heading.textContent = "RepoPilot: ";
+  reply.append(heading, document.createTextNode(
+    sourceFiles.length ? answerQuestion(question) :
+    "Connect and analyse a public GitHub repository before asking questions."
+  ));
+  log.appendChild(reply);
+  log.scrollTop = log.scrollHeight;
+  $("question").value = "";
+});
+</script>
 </body>
 </html>
